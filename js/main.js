@@ -1,5 +1,12 @@
-//values of A3 - A4 in Hertz from http://www.phy.mtu.edu/~suits/notefreqs.html
-var scaleA = [220, 233.08, 246.94, 261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0, 415.30, 440.00];
+//Hertz values of notes saved in notes.js
+var notesUse = notes.filter(function (d) {
+    return d.octave >= 3 & d.octave <= 5;
+});
+
+//position of note in array to be used for data maping
+notesUse.forEach(function (d, i) {
+    d.scale_num = +i;
+});
 
 // create web audio api context
 var audioCtx = new(window.AudioContext || window.webkitAudioContext)();
@@ -13,14 +20,9 @@ oscillator.connect(gainNode);
 gainNode.connect(audioCtx.destination);
 var maxFreq = 4000;
 var maxVol = 0.05;
-var initialFreq = scaleA[0];
+var initialFreq = notesUse[0]["hertz"];
 //var initialVol = 0.001;
 var volume = 0.01;
-
-//var sampleData = [2, 3, 5, 6, 7, 1, 5, 3, 7, 9, 1, 11, 23, 5, 3, 3, 3, 5, 6, 8, 8, 9, 2, 1, 3, 5, 7, 7, 7];
-/*var sampleData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-var maxData = d3.max(sampleData);
-console.log(maxData);*/
 
 // set options for the oscillator
 function setOscillator() {
@@ -35,6 +37,34 @@ function setOscillator() {
 }
 setOscillator();
 
+//generate random data
+var sampleData = [];
+for (i = 0; i < 20; i++) {
+    sampleData.push({
+        position: i,
+        value: Math.random() * 35
+    });
+};
+
+var dataMax = d3.max(sampleData, function (d) {
+    return d.value;
+});
+var dataMin = d3.min(sampleData, function (d) {
+    return d.value;
+});
+var noteMin = 0;
+var noteMax = notesUse.length - 1;
+var dist = noteMax / (dataMax - dataMin);
+console.log(dist);
+
+//map data to notes
+sampleData.forEach(function (d, i) {
+    //need to qualify, ceiling is noteMax
+    d.scale_num = Math.min(Math.round(d.value * dist), noteMax);
+    d.hertz = notesUse[d.scale_num]["hertz"];
+    d.note_sharp = notesUse[d.scale_num]["note_sharp"]
+
+});
 var step = 0;
 
 function drawGraphic() {
@@ -58,32 +88,59 @@ function drawGraphic() {
 
     var y = d3.scale.linear()
         .range([height, 0])
-        .domain([0, d3.max(scaleA)]);
-    console.log(d3.max(scaleA));
+        .domain([0, d3.max(sampleData, function (d) {
+            return d.value;
+        })])
 
     var x = d3.scale.ordinal()
         .rangeRoundBands([0, width], .1)
-        .domain(scaleA.map(function (d, i) {
-            return i;
+        .domain(sampleData.map(function (d) {
+            return d.position;
         }));
 
     svg.selectAll('rect')
-        .data(scaleA)
+        .data(sampleData)
         .enter()
         .append('rect')
         .attr("class", "bar")
-        .attr("id", function (d, i) {
-            return "r" + i;
+        .attr("id", function (d) {
+            return "r" + d.position;
         })
-        .attr("x", function (d, i) {
-            return x(i);
+        .attr("x", function (d) {
+            return x(d.position);
         })
         .attr("width", x.rangeBand())
         .attr("y", function (d) {
-            return y(d);
+            return y(d.value);
         })
         .attr("height", function (d) {
-            return height - y(d);
+            return height - y(d.value);
+        });
+
+    var labels = svg.selectAll(".label")
+        .data(sampleData)
+        .enter()
+        .append("g")
+        .attr("class", "label");
+
+    labels.append("text")
+        .attr("x", function (d, i) {
+            return x(i) + x.rangeBand() / 2;
+        })
+        .attr("y", height - 5)
+        .attr("text-anchor", "middle")
+        .text(function (d) {
+            return Math.round(d.value);
+        });
+    
+    labels.append("text")
+        .attr("x", function (d, i) {
+            return x(i) + x.rangeBand() / 2;
+        })
+        .attr("y", height - 18)
+        .attr("text-anchor", "middle")
+        .text(function (d) {
+            return d.note_sharp;
         });
 }
 drawGraphic();
@@ -93,17 +150,16 @@ function tone() {
     d3.selectAll(".selected")
         .classed("selected", false)
 
-    oscillator.frequency.value = scaleA[step];
+    oscillator.frequency.value = sampleData[step]["hertz"];
     d3.select("rect#r" + step)
         .classed("selected", true)
 
-    if (step < scaleA.length - 1) {
+    if (step < sampleData.length - 1) {
         step = step + 1;
     } else {
         //return to the beginning
         step = 0;
     }
-    console.log(step);
     //gainNode.gain.value = (step / maxData) * maxVol;
 }
 

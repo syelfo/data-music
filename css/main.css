@@ -1,7 +1,15 @@
+body {
+    font-family: "Lato", Arial, sans-serif;
+}
 .bar {
-    fill: #8b2121;
+    fill: #b7b7b7;
 }
 
 .selected {
-    fill: #e2dcc9;
+    fill: #8b2121;
+}
+
+.label {
+    fill: #000000;
+    font-size: 12px;
 }
